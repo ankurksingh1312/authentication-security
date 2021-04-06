@@ -4,6 +4,8 @@ const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require('mongoose');
 const md5=require("md5");
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const app = express();
 
@@ -25,20 +27,6 @@ const userSchema= new mongoose.Schema({
 const User= mongoose.model("user",userSchema);
 
 
-// let newArticle= new Article({
-//         title:req.body.title,
-//         content:req.body.content
-//     });
-// newArticle.save(function(err){
-//         if(err){
-//             res.send(err);
-//         }
-//         else{
-//             res.send("successfully inserted new article");
-//         }
-// });
-
-
 app.get("/",function(req,res){
     res.render("home");
 });
@@ -50,32 +38,41 @@ app.get("/register",function(req,res){
 });
 
 app.post("/register",function(req,res){
-  let newUser= new User({
-    email:req.body.inputEmail,
-    password:md5(req.body.inputPassword)
-  });
-  newUser.save(function(err){
-    if(err){res.send(err); }
-    else{res.render("secrets");}
+
+  bcrypt.hash(req.body.inputPassword, saltRounds, function(err, hash) {
+    let newUser= new User({
+      email:req.body.inputEmail,
+      password:hash
+    });
+    newUser.save(function(err){
+      if(err){res.send(err); }
+      else{res.render("secrets");}
+    });    
   });
 });
 
 app.post("/login",function(req,res){
+
+  
   let userEmail=req.body.inputEmailLogin;
-  let userPassword=md5(req.body.inputPasswordLogin);
+  let userPassword=req.body.inputPasswordLogin;
   
   User.findOne({email:userEmail},function(err,result){
     if(err){
       res.send(err);
-    }else{
-      if(userPassword===result.password){
-        res.render("secrets");
-      }else{
-        res.send("user or email not correct");
-      }
     }
+    else{
+        bcrypt.compare(userPassword, result.password, function(err, result1) {
+          if(result1===true){
+            res.render("secrets");
+          }
+          else{
+            res.send(err);
+          }
+        });
+    }    
   });
-});
+  });
 
 
 
